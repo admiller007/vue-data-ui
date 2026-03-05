@@ -68,6 +68,7 @@ import ArenaVueUiChord from "../TestingArena/ArenaVueUiChord.vue"
 import ArenaVueUiDashboard from "../TestingArena/ArenaVueUiDashboard.vue";
 import ArenaVueUiAnnotator from "../TestingArena/ArenaVueUiAnnotator.vue";
 import ArenaVueUiStackline from "../TestingArena/ArenaVueUiStackline.vue";
+import ArenaFunSolarSystem from "../TestingArena/ArenaFunSolarSystem.vue";
 
   /**
    * TODO: migrate manual testing for the following:
@@ -134,7 +135,8 @@ const mapping = ref({
   VueUiRidgeline: markRaw(ArenaVueUiRidgeline), 
   VueUiChord: markRaw(ArenaVueUiChord), 
   VueUiDashboard: markRaw(ArenaVueUiDashboard),
-  VueUiAnnotator: markRaw(ArenaVueUiAnnotator)
+  VueUiAnnotator: markRaw(ArenaVueUiAnnotator),
+  FunSolarSystem: markRaw(ArenaFunSolarSystem),
 })
 
 const options = computed(() => Object.keys(mapping.value));
