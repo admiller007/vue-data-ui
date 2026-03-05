@@ -71,7 +71,8 @@ const components = [
   { name: 'ArenaVueUiDigits', icon: 'digit8'},
   { name: 'ArenaVueUiDag', icon: 'chartDag' },
   { name: 'ArenaVueUiGeo', icon: 'chartGeo' },
-  { name: 'ArenaVueUiBump', icon: 'chartBump'}
+  { name: 'ArenaVueUiBump', icon: 'chartBump'},
+  { name: 'ArenaFunSolarSystem', icon: 'chartGalaxy' },
 ].map(componentItem => ({
   path: `/${componentItem.name}`,
   name: componentItem.name.replace('Arena', ''),
