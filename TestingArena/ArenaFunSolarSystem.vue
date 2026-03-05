@@ -5,6 +5,8 @@ import LocalVueUiRings from '../src/components/vue-ui-rings.vue';
 import LocalVueUiRadar from '../src/components/vue-ui-radar.vue';
 import LocalVueUiDonut from '../src/components/vue-ui-donut.vue';
 import LocalVueUiThermometer from '../src/components/vue-ui-thermometer.vue';
+import LocalVueUiRating from '../src/components/vue-ui-rating.vue';
+import LocalVueUiSmiley from '../src/components/vue-ui-smiley.vue';
 
 const planets = [
     {
@@ -362,6 +364,98 @@ const thermoConfig = computed(() => ({
     },
     userOptions: { show: false },
 }));
+
+// --- Voting: per-planet star ratings ---
+const votes = ref(
+    Object.fromEntries(planets.map(p => [p.name, { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 }]))
+);
+
+const lastVote = ref(Object.fromEntries(planets.map(p => [p.name, null])));
+
+function totalVotesFor(planetName) {
+    return Object.values(votes.value[planetName]).reduce((a, b) => a + b, 0);
+}
+
+function avgRatingFor(planetName) {
+    const v = votes.value[planetName];
+    const total = totalVotesFor(planetName);
+    if (total === 0) return 0;
+    const sum = Object.entries(v).reduce((acc, [stars, count]) => acc + Number(stars) * count, 0);
+    return sum / total;
+}
+
+function castVote(stars) {
+    const name = selectedPlanetName.value;
+    const prev = lastVote.value[name];
+    if (prev !== null) {
+        // Remove previous vote before adding new one
+        votes.value[name][String(prev)] = Math.max(0, votes.value[name][String(prev)] - 1);
+    }
+    votes.value[name][String(stars)]++;
+    lastVote.value[name] = stars;
+}
+
+const totalVotes = computed(() => {
+    const name = selectedPlanetName.value;
+    return Object.values(votes.value[name]).reduce((a, b) => a + b, 0);
+});
+
+const ratingDataset = computed(() => ({
+    rating: votes.value[selectedPlanetName.value],
+}));
+
+// Interactive rating (for casting a vote)
+const ratingConfig = computed(() => ({
+    readonly: false,
+    from: 1,
+    to: 5,
+    style: {
+        backgroundColor: '#0d1117',
+        itemSize: 36,
+        star: {
+            activeColor: selectedPlanet.value.color,
+            borderColor: selectedPlanet.value.color,
+            borderWidth: 2,
+            apexes: 5,
+            inactiveColor: '#2a3550',
+            useGradient: true,
+        },
+        rating: {
+            show: false,
+        },
+        tooltip: {
+            show: true,
+            backgroundColor: '#161b22',
+            color: '#e0e0e0',
+            borderColor: '#2a3550',
+        },
+    },
+}));
+
+// Readonly smiley showing vote distribution
+const smileyConfig = computed(() => ({
+    readonly: true,
+    style: {
+        backgroundColor: '#0d1117',
+        itemSize: 32,
+        icons: {
+            filled: true,
+            useGradient: true,
+        },
+        rating: {
+            show: true,
+            fontSize: 22,
+            bold: true,
+            position: 'bottom',
+        },
+        tooltip: {
+            show: true,
+            backgroundColor: '#161b22',
+            color: '#e0e0e0',
+            borderColor: '#2a3550',
+        },
+    },
+}));
 </script>
 
 <template>
@@ -456,6 +550,72 @@ const thermoConfig = computed(() => ({
             <div class="chart-card chart-card--narrow">
                 <div class="thermo-label">Surface Temperature</div>
                 <LocalVueUiThermometer :dataset="thermoDataset" :config="thermoConfig" />
+            </div>
+        </div>
+
+        <!-- Section 4: Voting -->
+        <div class="section-label">Rate {{ selectedPlanet.name }} — Would you live there?</div>
+        <div class="vote-card" :style="{ borderColor: selectedPlanet.color }">
+            <div class="vote-layout">
+                <div class="vote-interactive">
+                    <div class="vote-prompt">
+                        <span class="planet-big-symbol" :style="{ color: selectedPlanet.color }">
+                            {{ selectedPlanet.symbol }}
+                        </span>
+                        <div>
+                            <div class="vote-title">Cast your vote</div>
+                            <div class="vote-hint">
+                                {{ lastVote[selectedPlanetName] !== null
+                                    ? `You rated ${selectedPlanet.name}: ${'★'.repeat(lastVote[selectedPlanetName])}${'☆'.repeat(5 - lastVote[selectedPlanetName])}`
+                                    : 'Click a star to rate this planet' }}
+                            </div>
+                        </div>
+                    </div>
+                    <LocalVueUiRating
+                        :dataset="ratingDataset"
+                        :config="ratingConfig"
+                        @rate="castVote"
+                    />
+                </div>
+
+                <div class="vote-results">
+                    <div class="vote-results-title">
+                        Community Ratings
+                        <span class="vote-count">({{ totalVotes }} vote{{ totalVotes !== 1 ? 's' : '' }})</span>
+                    </div>
+                    <LocalVueUiSmiley
+                        :dataset="ratingDataset"
+                        :config="smileyConfig"
+                    />
+                </div>
+            </div>
+
+            <div class="habitability-bar">
+                <div class="habitability-label">Habitability Score</div>
+                <div class="habitability-planets">
+                    <div
+                        v-for="planet in planets"
+                        :key="planet.name"
+                        class="hab-planet"
+                        :title="planet.name"
+                    >
+                        <div class="hab-name">{{ planet.symbol }}</div>
+                        <div class="hab-track">
+                            <div
+                                class="hab-fill"
+                                :style="{
+                                    width: totalVotesFor(planet.name) === 0
+                                        ? '0%'
+                                        : `${avgRatingFor(planet.name) / 5 * 100}%`,
+                                    background: planet.color,
+                                }"
+                            />
+                        </div>
+                        <div class="hab-score" :style="{ color: planet.color }">
+                            {{ totalVotesFor(planet.name) === 0 ? '—' : avgRatingFor(planet.name).toFixed(1) }}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -661,6 +821,123 @@ const thermoConfig = computed(() => ({
     color: #5a6a9a;
     margin-bottom: 0.5rem;
     text-align: center;
+}
+
+/* Voting */
+.vote-card {
+    background: #161b22;
+    border: 1px solid #2a3550;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 0.5rem;
+    border-left-width: 4px;
+    transition: border-color 0.3s;
+}
+
+.vote-layout {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.vote-interactive {
+    flex: 1;
+    min-width: 240px;
+}
+
+.vote-prompt {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.vote-title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #e0e0e0;
+}
+
+.vote-hint {
+    font-size: 0.8rem;
+    color: #8a8a9a;
+    margin-top: 0.2rem;
+    min-height: 1.2em;
+}
+
+.vote-results {
+    flex: 1;
+    min-width: 200px;
+}
+
+.vote-results-title {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #5a6a9a;
+    margin-bottom: 0.5rem;
+}
+
+.vote-count {
+    font-size: 0.75rem;
+    color: #4a4a6a;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+/* Habitability bar */
+.habitability-bar {
+    border-top: 1px solid #2a3550;
+    padding-top: 1rem;
+}
+
+.habitability-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #5a6a9a;
+    margin-bottom: 0.75rem;
+}
+
+.habitability-planets {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.hab-planet {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    flex: 1;
+    min-width: 50px;
+}
+
+.hab-name {
+    font-size: 1rem;
+}
+
+.hab-track {
+    width: 100%;
+    height: 6px;
+    background: #2a3550;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.hab-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+}
+
+.hab-score {
+    font-size: 0.7rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.3s;
 }
 
 .footer {
